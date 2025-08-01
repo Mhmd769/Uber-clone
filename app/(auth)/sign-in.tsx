@@ -1,11 +1,63 @@
-import { Text, View } from "react-native";
+import { Image, Text, View ,ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import "../../global.css";
+import { icons, images } from "@/constants";
+import InputField from "@/components/InputField";
+import { useState } from "react";
+import CustomButton from "@/components/CustmoeButton";
+import { Link } from "expo-router";
+import OAuth from "@/components/OAuth";
+
 
 const SignIn  =() => {
+
+  const [form,setform]= useState({
+    email: "",
+    password: ""
+  })
+
+  const onSignInPress=async()=>{}
+
   return (
-    <SafeAreaView>
-      <Text>Sign-in Screen</Text>
-    </SafeAreaView>
+    <ScrollView className="flex-1 bg-white">
+      <View className="flex-1 bg-white">
+        <View className="relative w-full h-[250px]">
+          <Image source={images.signUpCar} className="z-0 w-full h-[250px]" />
+          <Text className="text-2xl text-black font-JakartaSemiBold
+           absolute bottom-5 left-5">Weclome 👋</Text>
+        </View>
+
+        <View className="p-5">
+          <InputField 
+            label="Email"
+            placeholder="Enter your Email"
+            icon={icons.email}
+            value={form.email}
+            onChangeText={(value) => setform({ ...form, email: value })}
+          />
+
+
+          <InputField 
+            label="password"
+            placeholder="Enter your password"
+            icon={icons.lock}
+            secureTextEntry={true}
+            value={form.password}
+            onChangeText={(value) => setform({ ...form, password: value })}
+          />
+
+          <CustomButton title="Sign-Ip" onPress={onSignInPress} className="mt-6 "/>
+
+            <OAuth/>
+
+            <Link href="/sign-up" className="text-lg text-center text-general-200 mt-10">
+            <Text>Don't Have an Account?</Text>
+            <Text className="text-primary-500">Sign Up</Text>
+            </Link>
+        </View>
+        {/* Verfication Modal */}
+      </View>
+    </ScrollView>
 
   );
 };
