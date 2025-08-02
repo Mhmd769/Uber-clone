@@ -2,10 +2,14 @@ import { Stack, SplashScreen } from 'expo-router';
 import { useFonts } from 'expo-font';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
-import { ClerkProvider } from '@clerk/clerk-expo'
-import { Slot } from 'expo-router'
+
 import { tokenCache } from '@clerk/clerk-expo/token-cache'
 
+import { ClerkLoaded, ClerkProvider } from '@clerk/clerk-expo'
+import { Slot } from 'expo-router'
+
+
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
 
 SplashScreen.preventAutoHideAsync();
 
@@ -32,16 +36,19 @@ export default function RootLayout() {
   }
 
   return (
-    <ClerkProvider tokenCache={tokenCache}>
-      <Stack>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <ClerkLoaded>
+        <Stack>
 
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(root)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="(root)" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
-        <Stack.Screen name="+not-found" />
-      </Stack>
-    </ClerkProvider>
+          <Stack.Screen name="+not-found" />
+        </Stack>
+      </ClerkLoaded>
+      </ClerkProvider>
+
 
   );
 }
