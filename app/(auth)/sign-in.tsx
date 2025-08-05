@@ -7,6 +7,7 @@ import { Link, useRouter } from "expo-router";
 import { useSignIn } from "@clerk/clerk-expo";
 import { useState } from "react";
 import "../../global.css";
+import Home from "../(root)/(tabs)/home";
 
 const SignIn = () => {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -67,6 +68,7 @@ const SignIn = () => {
           </Link>
         </View>
       </View>
+      <Home/>
     </ScrollView>
   );
 };
