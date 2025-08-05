@@ -1,10 +1,23 @@
+// app/index.tsx
+import { useAuth } from "@clerk/clerk-expo";
 import { Redirect } from "expo-router";
-import { Text, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 
-const Home =() => {
-  return (
-   <Redirect href="/(auth)/welcome" />
-  );
-};
+export default function Index() {
+  const { isLoaded, isSignedIn } = useAuth();
 
-export default Home;
+  if (!isLoaded) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  // If already signed in → go to home
+  if (isSignedIn) {
+  return <Redirect href="/(root)/(tabs)/home" />;  }
+
+  // If not signed in → go to welcome/login
+  return <Redirect href="/welcome" />;
+}
