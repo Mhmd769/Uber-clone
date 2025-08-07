@@ -1,49 +1,29 @@
+import { useSignUp } from "@clerk/clerk-expo";
+import { Link, router } from "expo-router";
+import { useState } from "react";
+import { Alert, Image, ScrollView, Text, View } from "react-native";
+import { ReactNativeModal } from "react-native-modal";
+
 import CustomButton from "@/components/CustmoeButton";
 import InputField from "@/components/InputField";
 import OAuth from "@/components/OAuth";
 import { icons, images } from "@/constants";
-import { Link, useRouter } from "expo-router";
-import { useState, useEffect } from "react";
-import {
-  Image,
-  ScrollView,
-  Text,
-  View,
-  TextInput,
-  TouchableOpacity,
-} from "react-native";
-import { useSignUp } from "@clerk/clerk-expo";
-import ReactNativeModal from "react-native-modal";
-
-import "../../global.css";
+import { fetchAPI } from "@/lib/fetch";
 
 const SignUp = () => {
   const { isLoaded, signUp, setActive } = useSignUp();
-  const router = useRouter();
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
   });
-
   const [verification, setVerification] = useState({
-    state: "default", // default | pending | success | failed
+    state: "default",
     error: "",
     code: "",
   });
-
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-
-  // Toast function for errors
-  const showErrorToast = (message: string) => {
-    setToastMessage(message);
-    setShowToast(true);
-    setTimeout(() => {
-      setShowToast(false);
-    }, 3000);
-  };
 
   const onSignUpPress = async () => {
     if (!isLoaded) return;
@@ -53,45 +33,54 @@ const SignUp = () => {
         password: form.password,
       });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setVerification({ ...verification, state: "pending", error: "" });
-    } catch (err: any) {
-      console.error(err);
       setVerification({
         ...verification,
-        error: err?.errors?.[0]?.longMessage || "Failed to sign up.",
-        state: "failed",
+        state: "pending",
       });
-      showErrorToast(err?.errors?.[0]?.longMessage || "Failed to sign up. Please try again.");
+    } catch (err: any) {
+      // See https://clerk.com/docs/custom-flows/error-handling
+      // for more info on error handling
+      console.log(JSON.stringify(err, null, 2));
+      Alert.alert("Error", err.errors[0].longMessage);
     }
   };
-
-  const onVerifyPress = async () => {
+  const onPressVerify = async () => {
     if (!isLoaded) return;
     try {
-      const result = await signUp.attemptEmailAddressVerification({
+      const completeSignUp = await signUp.attemptEmailAddressVerification({
         code: verification.code,
       });
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        setVerification({ ...verification, state: "success", error: "" });
+      if (completeSignUp.status === "complete") {
+        await fetchAPI("/(api)/user", {
+          method: "POST",
+          body: JSON.stringify({
+            name: form.name,
+            email: form.email,
+            clerkId: completeSignUp.createdUserId,
+          }),
+        });
+        await setActive({ session: completeSignUp.createdSessionId });
+        setVerification({
+          ...verification,
+          state: "success",
+        });
       } else {
         setVerification({
           ...verification,
           error: "Verification failed. Please try again.",
           state: "failed",
         });
-        showErrorToast("Incorrect verification code. Please try again.");
       }
     } catch (err: any) {
+      // See https://clerk.com/docs/custom-flows/error-handling
+      // for more info on error handling
       setVerification({
         ...verification,
-        error: err?.errors?.[0]?.longMessage || "Verification error",
+        error: err.errors[0].longMessage,
         state: "failed",
       });
-      showErrorToast("Incorrect verification code. Please try again.");
     }
   };
-
   return (
     <ScrollView className="flex-1 bg-white">
       <View className="flex-1 bg-white">
@@ -101,7 +90,6 @@ const SignUp = () => {
             Create Your Account
           </Text>
         </View>
-
         <View className="p-5">
           <InputField
             label="Name"
@@ -122,12 +110,16 @@ const SignUp = () => {
             label="Password"
             placeholder="Enter password"
             icon={icons.lock}
-            secureTextEntry
+            secureTextEntry={true}
             textContentType="password"
             value={form.password}
             onChangeText={(value) => setForm({ ...form, password: value })}
           />
-          <CustomButton title="Sign Up" onPress={onSignUpPress} className="mt-6" />
+          <CustomButton
+            title="Sign Up"
+            onPress={onSignUpPress}
+            className="mt-6"
+          />
           <OAuth />
           <Link
             href="/sign-in"
@@ -137,91 +129,67 @@ const SignUp = () => {
             <Text className="text-primary-500">Log In</Text>
           </Link>
         </View>
-
-        {/* Verification Modal */}
         <ReactNativeModal
-          isVisible={verification.state === "pending" || verification.state === "failed"}
-          onBackdropPress={() => setVerification({ ...verification, state: "default", error: "" })}
-          animationIn="fadeIn"
-          animationOut="fadeOut"
-          backdropOpacity={0.6}
-          useNativeDriver={true}
+          isVisible={verification.state === "pending"}
+          // onBackdropPress={() =>
+          //   setVerification({ ...verification, state: "default" })
+          // }
+          onModalHide={() => {
+            if (verification.state === "success") {
+              setShowSuccessModal(true);
+            }
+          }}
         >
           <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px]">
-            <Text className="font-JakartaExtraBold text-2xl mb-2">Verification</Text>
+            <Text className="font-JakartaExtraBold text-2xl mb-2">
+              Verification
+            </Text>
             <Text className="font-Jakarta mb-5">
               We've sent a verification code to {form.email}.
             </Text>
             <InputField
-              label="Code"
+              label={"Code"}
               icon={icons.lock}
-              placeholder="123456"
+              placeholder={"12345"}
               value={verification.code}
               keyboardType="numeric"
-                maxLength={6}
-
-              onChangeText={(code) => setVerification({ ...verification, code })}
+              onChangeText={(code) =>
+                setVerification({ ...verification, code })
+              }
             />
+            {verification.error && (
+              <Text className="text-red-500 text-sm mt-1">
+                {verification.error}
+              </Text>
+            )}
             <CustomButton
               title="Verify Email"
-              onPress={onVerifyPress}
+              onPress={onPressVerify}
               className="mt-5 bg-success-500"
-              disabled={verification.code.length !== 6}
             />
           </View>
         </ReactNativeModal>
-
-        {/* Success Modal - Browse Home */}
-        <ReactNativeModal
-          isVisible={verification.state === "success"}
-          onBackdropPress={() => router.push("/home")}
-          animationIn="fadeIn"
-          animationOut="fadeOut"
-          backdropOpacity={0.6}
-          useNativeDriver={true}
-        >
-          <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px] justify-center items-center">
+        <ReactNativeModal isVisible={showSuccessModal}>
+          <View className="bg-white px-7 py-9 rounded-2xl min-h-[300px]">
             <Image
               source={images.check}
-              className="w-[110px] h-[110px] mb-5"
+              className="w-[110px] h-[110px] mx-auto my-5"
             />
-            <Text className="text-3xl font-JakartaBold text-center">Verified</Text>
+            <Text className="text-3xl font-JakartaBold text-center">
+              Verified
+            </Text>
             <Text className="text-base text-gray-400 font-Jakarta text-center mt-2">
               You have successfully verified your account.
             </Text>
             <CustomButton
               title="Browse Home"
-              onPress={() => router.push("/home")}
+              onPress={() => router.push(`/(root)/(tabs)/home`)}
               className="mt-5"
             />
-          </View>
-        </ReactNativeModal>
-
-        {/* Toast Alert for Errors */}
-        <ReactNativeModal
-          isVisible={showToast}
-          animationIn="slideInDown"
-          animationOut="slideOutUp"
-          backdropOpacity={0}
-          useNativeDriver={true}
-          style={{ justifyContent: 'flex-start', margin: 0, marginTop: 50 }}
-        >
-          <View className="mx-4 mt-4 bg-red-500 px-4 py-3 rounded-lg shadow-lg">
-            <View className="flex-row items-center">
-              <Image 
-                source={icons.close} 
-                className="w-5 h-5 mr-3"
-                style={{ tintColor: 'white' }}
-              />
-              <Text className="text-white font-JakartaSemiBold flex-1">
-                {toastMessage}
-              </Text>
-            </View>
           </View>
         </ReactNativeModal>
       </View>
     </ScrollView>
   );
 };
-
 export default SignUp;
