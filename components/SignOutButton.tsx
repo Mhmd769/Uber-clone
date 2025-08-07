@@ -1,6 +1,7 @@
+import { icons } from "@/constants";
 import { useClerk } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
-import { Text, TouchableOpacity } from "react-native";
+import { Image, Text, TouchableOpacity } from "react-native";
 
 export const SignOutButton = () => {
   const { signOut } = useClerk();
@@ -17,9 +18,9 @@ export const SignOutButton = () => {
   return (
     <TouchableOpacity
       onPress={handleSignOut}
-      className="bg-red-500 px-4 py-2 rounded-lg mt-4"
+      className="justify-center items-center w-10 h-10 rounded-full bg-white"
     >
-      <Text className="text-white text-center font-semibold">Sign Out</Text>
+    <Image source={icons.out} className="w-5 h-5 "/>
     </TouchableOpacity>
   );
 };

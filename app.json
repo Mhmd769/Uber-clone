@@ -14,13 +14,16 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/favicon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#ffffff",
+        "googleMaps": {
+          "apiKey": "AIzaSyBAPdaX1Ix52kX0HlSaqULKcREFUqYdYDo"
+        }
       },
       "edgeToEdgeEnabled": true
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "server",
       "favicon": "./assets/images/favicon.png"
     },
     "splash": {
@@ -29,9 +32,10 @@
       "backgroundColor": "#ffffff"
     },
     "plugins": [
-      "expo-router",
+    ["expo-router",{"origin":"https://uber.com"}],   
       "expo-splash-screen",
       "expo-web-browser"
+
     ],
     "experiments": {
       "typedRoutes": true
