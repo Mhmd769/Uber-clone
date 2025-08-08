@@ -15,6 +15,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/favicon.png",
         "backgroundColor": "#ffffff",
+        "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
         "googleMaps": {
           "apiKey": "AIzaSyBAPdaX1Ix52kX0HlSaqULKcREFUqYdYDo"
         }

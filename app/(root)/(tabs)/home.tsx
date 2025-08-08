@@ -1,10 +1,13 @@
 import GoogleTextInput from "@/components/GoogleTextInput";
+import * as Location from "expo-location"
 import Map from "@/components/Map";
 import RideCard from "@/components/RideCard";
 import { SignOutButton } from "@/components/SignOutButton";
 import { icons, images } from "@/constants";
+import { useLocationStore } from "@/store";
 import { useUser, SignedIn, SignedOut } from "@clerk/clerk-expo";
 import { Link } from "expo-router";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Image, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -107,12 +110,44 @@ const recentRides=
             "rating": "4.70"
         }
     }
-];  
+];    
 
 const Home =() => {
-
+  const {setUserLocation,setDestinationLocation} = useLocationStore();
   const {user}=useUser();
   const loading=true;
+
+  const[hasPermissions , setHasPermissions]=useState(false);
+
+
+  useEffect(()=>{
+    const requestLocation = async ()=>{
+      let {status} = await  Location.requestForegroundPermissionsAsync()
+
+      if(status!='granted')
+      {
+        setHasPermissions(false);
+        return;
+      }
+
+    let location = await Location.getCurrentPositionAsync();
+    const address = await Location.reverseGeocodeAsync({
+      latitude : location.coords?.latitude!,
+      longitude : location.coords?.longitude!,
+    });
+    setUserLocation({
+      //latitude : location.coords.latitude,
+      //longitude : location.coords.longitude,
+      latitude:33.8274,
+      longitude:35.5122,
+      address : `${address[0].name},${address[0].region}`,
+    })
+  };
+    requestLocation();
+ },[])
+
+
+
   const handelDestenationPress= ()=>{};
   return (
     <SafeAreaView className="bg-general-500">
