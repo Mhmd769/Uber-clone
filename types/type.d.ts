@@ -135,5 +135,5 @@ declare interface DriverStore {
 declare interface DriverCardProps {
     item: MarkerData;
     selected: number;
-    setSelected: () => void;
+  setSelected: (id: number) => void; // <-- allow parameter
 }
