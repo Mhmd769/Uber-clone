@@ -1,13 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { useDriverStore, useLocationStore } from "@/store";
-import { calculateRegion } from "@/lib/map";
-import { View, Platform, Image } from "react-native";
-import MapView, { Marker } from "react-native-maps";
-import { MarkerData } from "@/types/type";
-import { icons } from "@/constants";
+import React, { useEffect, useState, useRef } from "react";
+import { ActivityIndicator, Text, View, Platform } from "react-native";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 
-// You can replace this with a local asset by importing:
-import caricon from '@/assets/images/caricon.png';
+import { icons } from "@/constants";
+import { useFetch } from "@/lib/fetch";
+import {
+  calculateDriverTimes,
+  calculateRegion,
+  generateMarkersFromData,
+} from "@/lib/map";
+import { useDriverStore, useLocationStore } from "@/store";
+import { Driver, MarkerData } from "@/types/type";
 
 const LEBANON_CENTER = {
   latitude: 33.8547,
@@ -18,72 +21,82 @@ const LEBANON_CENTER = {
 
 const Map = () => {
   const {
+    userLongitude,
+    userLatitude,
+    destinationLongitude,
+    destinationLatitude,
+  } = useLocationStore();
+  const { selectedDriver, setSelectedDriver, setDrivers } = useDriverStore();
+
+  const { data: drivers, loading, error } = useFetch<Driver[]>("/(api)/driver");
+  const [markers, setMarkers] = useState<MarkerData[]>([]);
+  const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
+  const mapRef = useRef<MapView>(null);
+
+  // Generate driver markers
+  useEffect(() => {
+    if (!Array.isArray(drivers) || !userLatitude || !userLongitude) return;
+
+    const newMarkers = generateMarkersFromData({
+      data: drivers,
+      userLatitude,
+      userLongitude,
+    });
+    setMarkers(newMarkers);
+    setDrivers(newMarkers); // update store
+  }, [drivers, userLatitude, userLongitude, setDrivers]);
+
+  // Calculate driver times & prices
+  useEffect(() => {
+    if (
+      !userLatitude ||
+      !userLongitude ||
+      !destinationLatitude ||
+      !destinationLongitude ||
+      markers.length === 0
+    )
+      return;
+
+    calculateDriverTimes({
+      markers,
+      userLatitude,
+      userLongitude,
+      destinationLatitude,
+      destinationLongitude,
+    }).then((updatedMarkers) => setDrivers(updatedMarkers as MarkerData[]));
+  }, [
+    markers,
     userLatitude,
     userLongitude,
     destinationLatitude,
     destinationLongitude,
-  } = useLocationStore();
-
-  const { setDrivers } = useDriverStore();
-
-  const [markers, setMarkers] = useState<MarkerData[]>([
-    {
-      id: 1,
-      first_name: "James",
-      last_name: "Wilson",
-      title: "James Wilson",
-      profile_image_url:
-        "https://ucarecdn.com/dae59f69-2c1f-48c3-a883-017bcf0f9950/-/preview/1000x666/",
-      car_image_url:
-        "https://ucarecdn.com/a2dc52b2-8bf7-4e49-9a36-3ffb5229ed02/-/preview/465x466/",
-      car_seats: 4,
-      rating: 4.8,
-      latitude: 33.8547,
-      longitude: 35.8623,
-    },
-    {
-      id: 2,
-      first_name: "David",
-      last_name: "Brown",
-      title: "David Brown",
-      profile_image_url:
-        "https://ucarecdn.com/6ea6d83d-ef1a-483f-9106-837a3a5b3f67/-/preview/1000x666/",
-      car_image_url:
-        "https://ucarecdn.com/a3872f80-c094-409c-82f8-c9ff38429327/-/preview/930x932/",
-      car_seats: 5,
-      rating: 4.6,
-      latitude: 33.8647,
-      longitude: 35.8723,
-    },
-    {
-      id: 3,
-      first_name: "Michael",
-      last_name: "Johnson",
-      title: "Michael Johnson",
-      profile_image_url:
-        "https://ucarecdn.com/0330d85c-232e-4c30-bd04-e5e4d0e3d688/-/preview/826x822/",
-      car_image_url:
-        "https://ucarecdn.com/289764fb-55b6-4427-b1d1-f655987b4a14/-/preview/930x932/",
-      car_seats: 4,
-      rating: 4.7,
-      latitude: 33.8747,
-      longitude: 35.8823,
-    },
-    {
-      id: 4,
-      first_name: "Robert",
-      last_name: "Green",
-      title: "Robert Green",
-      profile_image_url:
-        "https://ucarecdn.com/fdfc54df-9d24-40f7-b7d3-6f391561c0db/-/preview/626x417/",
-      car_image_url:
-        "https://ucarecdn.com/b6fb3b55-7676-4ff3-8484-fb115e268d32/-/preview/930x932/",
-      car_seats: 4,
-      rating: 4.9,
-      latitude: 33.8847,
-      longitude: 35.8923,
-    },
+    setDrivers,
   ]);
+
+  // Fetch route from OSRM
+  useEffect(() => {
+    const fetchRoute = async () => {
+      if (!userLatitude || !userLongitude || !destinationLatitude || !destinationLongitude)
+        return;
+
+      try {
+        const url = `https://router.project-osrm.org/route/v1/driving/${userLongitude},${userLatitude};${destinationLongitude},${destinationLatitude}?overview=full&geometries=geojson`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.routes && data.routes.length > 0) {
+          const coords = data.routes[0].geometry.coordinates.map(
+            ([lon, lat]: [number, number]) => ({ latitude: lat, longitude: lon })
+          );
+          setRouteCoords(coords);
+        }
+      } catch (err) {
+        console.error("OSRM route error:", err);
+      }
+    };
+
+    fetchRoute();
+  }, [userLatitude, userLongitude, destinationLatitude, destinationLongitude]);
 
   const region = calculateRegion({
     userLatitude: userLatitude ?? LEBANON_CENTER.latitude,
@@ -92,49 +105,57 @@ const Map = () => {
     destinationLongitude: destinationLongitude ?? LEBANON_CENTER.longitude,
   });
 
-  useEffect(() => {
-    setDrivers(markers);
-  }, [markers, setDrivers]);
+  if (loading || !userLatitude || !userLongitude)
+    return (
+      <View className="flex justify-center items-center w-full">
+        <ActivityIndicator size="small" color="#000" />
+      </View>
+    );
+
+  if (error)
+    return (
+      <View className="flex justify-center items-center w-full">
+        <Text>Error: {error}</Text>
+      </View>
+    );
 
   return (
-    <View style={{ flex: 1 }}>
-      <MapView
-        style={{ flex: 1 }}
-        initialRegion={region}
-        showsUserLocation={true}
-        showsPointsOfInterest={false}
-        mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
-        userInterfaceStyle="light"
-      >
-        {destinationLatitude && destinationLongitude && (
-          <Marker
-            coordinate={{
-              latitude: destinationLatitude,
-              longitude: destinationLongitude,
-            }}
-            title="Destination"
-            pinColor="blue"
-          />
-        )}
+    <MapView
+      ref={mapRef}
+      provider={PROVIDER_GOOGLE}
+      style={{ flex: 1 }}
+      mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
+      showsUserLocation
+      showsPointsOfInterest={false}
+      initialRegion={region}
+      userInterfaceStyle="light"
+    >
+      {/* Driver markers */}
+      {markers.map((marker) => (
+        <Marker
+          key={marker.id}
+          coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
+          title={marker.title}
+          image={selectedDriver === marker.id ? icons.selectedMarker : icons.marker}
+          onPress={() => setSelectedDriver(marker.id)}
+        />
+      ))}
 
-        {markers.map((driver) => (
-          <Marker
-            key={driver.id}
-            coordinate={{ latitude: driver.latitude, longitude: driver.longitude }}
-            title={`${driver.first_name} ${driver.last_name}`}
-            description={`Rating: ${driver.rating} | Seats: ${driver.car_seats}`}
-          >
-            {/* Custom car icon */}
-          <Image
-            source={caricon}    // ✅ correct usage
-            style={{ width: 30, height: 30 }}
-            resizeMode="contain"
-          />
+      {/* Destination marker */}
+      {destinationLatitude && destinationLongitude && (
+        <Marker
+          key="destination"
+          coordinate={{ latitude: destinationLatitude, longitude: destinationLongitude }}
+          title="Destination"
+          image={icons.pin}
+        />
+      )}
 
-          </Marker>
-        ))}
-      </MapView>
-    </View>
+      {/* Draw route from OSRM */}
+      {routeCoords.length > 0 && (
+        <Polyline coordinates={routeCoords} strokeWidth={4} strokeColor="#0286FF" />
+      )}
+    </MapView>
   );
 };
 

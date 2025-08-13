@@ -10,11 +10,11 @@ const ConfirmRide = () => {
   const { drivers, selectedDriver, setSelectedDriver } = useDriverStore();
 
   return (
-    <RideLayout title={"Choose a Rider"} snapPoints={["65%", "85%"]}>
+    <RideLayout title="Choose a Rider" snapPoints={["65%", "85%"]}>
       <FlatList
         data={drivers}
         keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item, index }) => (
+        renderItem={({ item }) => (
           <DriverCard
             item={item}
             selected={selectedDriver!}
@@ -29,6 +29,11 @@ const ConfirmRide = () => {
             />
           </View>
         )}
+        scrollEnabled={false} // ✅ Prevent nested scroll warning
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingBottom: 20,
+        }}
       />
     </RideLayout>
   );

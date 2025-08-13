@@ -1,7 +1,8 @@
 import { Driver, MarkerData } from "@/types/type";
 
-const directionsAPI = process.env.EXPO_PUBLIC_DIRECTIONS_API_KEY;
-
+/**
+ * Generate markers from driver data around the user's location.
+ */
 export const generateMarkersFromData = ({
   data,
   userLatitude,
@@ -12,19 +13,26 @@ export const generateMarkersFromData = ({
   userLongitude: number;
 }): MarkerData[] => {
   return data.map((driver) => {
-    const latOffset = (Math.random() - 0.5) * 0.01; // Random offset between -0.005 and 0.005
-    const lngOffset = (Math.random() - 0.5) * 0.01; // Random offset between -0.005 and 0.005
-
+    const latOffset = (Math.random() - 0.5) * 0.01;
+    const lngOffset = (Math.random() - 0.5) * 0.01;
     return {
-    id: driver.driver_id,
+      id: driver.driver_id,
       latitude: userLatitude + latOffset,
       longitude: userLongitude + lngOffset,
       title: `${driver.first_name} ${driver.last_name}`,
-      ...driver,
+      first_name: driver.first_name,
+      last_name: driver.last_name,
+      rating: parseFloat(driver.rating) || 5,
+      car_seats: driver.car_seats,
+      profile_image_url: driver.profile_image_url,
+      car_image_url: driver.car_image_url,
     };
   });
 };
 
+/**
+ * Calculate map region for user and destination.
+ */
 export const calculateRegion = ({
   userLatitude,
   userLongitude,
@@ -36,43 +44,26 @@ export const calculateRegion = ({
   destinationLatitude?: number | null;
   destinationLongitude?: number | null;
 }) => {
-  if (!userLatitude || !userLongitude) {
-    return {
-      latitude: 37.78825,
-      longitude: -122.4324,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    };
-  }
-
+  const DEFAULT_CENTER = { latitude: 33.8547, longitude: 35.8623, latitudeDelta: 0.5, longitudeDelta: 0.5 };
+  if (!userLatitude || !userLongitude) return DEFAULT_CENTER;
   if (!destinationLatitude || !destinationLongitude) {
-    return {
-      latitude: userLatitude,
-      longitude: userLongitude,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    };
+    return { latitude: userLatitude, longitude: userLongitude, latitudeDelta: 0.01, longitudeDelta: 0.01 };
   }
-
   const minLat = Math.min(userLatitude, destinationLatitude);
   const maxLat = Math.max(userLatitude, destinationLatitude);
   const minLng = Math.min(userLongitude, destinationLongitude);
   const maxLng = Math.max(userLongitude, destinationLongitude);
-
-  const latitudeDelta = (maxLat - minLat) * 1.3; // Adding some padding
-  const longitudeDelta = (maxLng - minLng) * 1.3; // Adding some padding
-
-  const latitude = (userLatitude + destinationLatitude) / 2;
-  const longitude = (userLongitude + destinationLongitude) / 2;
-
   return {
-    latitude,
-    longitude,
-    latitudeDelta,
-    longitudeDelta,
+    latitude: (userLatitude + destinationLatitude) / 2,
+    longitude: (userLongitude + destinationLongitude) / 2,
+    latitudeDelta: (maxLat - minLat) * 1.3,
+    longitudeDelta: (maxLng - minLng) * 1.3,
   };
 };
 
+/**
+ * Calculate driver times and prices using OSRM (free).
+ */
 export const calculateDriverTimes = async ({
   markers,
   userLatitude,
@@ -85,38 +76,37 @@ export const calculateDriverTimes = async ({
   userLongitude: number | null;
   destinationLatitude: number | null;
   destinationLongitude: number | null;
-}) => {
-  if (
-    !userLatitude ||
-    !userLongitude ||
-    !destinationLatitude ||
-    !destinationLongitude
-  )
-    return;
+}): Promise<MarkerData[]> => {
+  if (!userLatitude || !userLongitude || !destinationLatitude || !destinationLongitude) return markers;
 
   try {
-    const timesPromises = markers.map(async (marker) => {
-      const responseToUser = await fetch(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${marker.latitude},${marker.longitude}&destination=${userLatitude},${userLongitude}&key=${directionsAPI}`,
+    const promises = markers.map(async (marker) => {
+      // driver -> user
+      const resToUser = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${marker.longitude},${marker.latitude};${userLongitude},${userLatitude}?overview=false`
       );
-      const dataToUser = await responseToUser.json();
-      const timeToUser = dataToUser.routes[0].legs[0].duration.value; // Time in seconds
+      const dataToUser = await resToUser.json();
+      const timeToUser = dataToUser.routes?.[0]?.duration ?? 0; // seconds
+      const distanceToUser = dataToUser.routes?.[0]?.distance ?? 0; // meters
 
-      const responseToDestination = await fetch(
-        `https://maps.googleapis.com/maps/api/directions/json?origin=${userLatitude},${userLongitude}&destination=${destinationLatitude},${destinationLongitude}&key=${directionsAPI}`,
+      // user -> destination
+      const resToDest = await fetch(
+        `https://router.project-osrm.org/route/v1/driving/${userLongitude},${userLatitude};${destinationLongitude},${destinationLatitude}?overview=false`
       );
-      const dataToDestination = await responseToDestination.json();
-      const timeToDestination =
-        dataToDestination.routes[0].legs[0].duration.value; // Time in seconds
+      const dataToDest = await resToDest.json();
+      const timeToDestination = dataToDest.routes?.[0]?.duration ?? 0;
+      const distanceToDestination = dataToDest.routes?.[0]?.distance ?? 0;
 
-      const totalTime = (timeToUser + timeToDestination) / 60; // Total time in minutes
-      const price = (totalTime * 0.5).toFixed(2); // Calculate price based on time
+      const totalTime = (timeToUser + timeToDestination) / 60; // minutes
+      const totalDistance = (distanceToUser + distanceToDestination) / 1000; // km
+      const price = (totalDistance * 1).toFixed(2); // $1 per km
 
       return { ...marker, time: totalTime, price };
     });
 
-    return await Promise.all(timesPromises);
+    return await Promise.all(promises);
   } catch (error) {
     console.error("Error calculating driver times:", error);
+    return markers;
   }
 };

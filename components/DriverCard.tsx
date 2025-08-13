@@ -43,8 +43,10 @@ const DriverCard = ({ item, selected, setSelected }: DriverCardProps) => {
             />
             <Text style={{ fontSize: 12, color: "#555" }}>${item.price} </Text>
 
-            <Text style={{ fontSize: 12, color: "#555" }}>| {item.time} min </Text>
-            <Text style={{ fontSize: 12, color: "#555" }}>| {item.car_seats} seats</Text>
+          <Text style={{ fontSize: 12, color: "#555" }}>
+            | {item.time?.toFixed(2)} min
+          </Text>
+            <Text style={{ fontSize: 12, color: "#555" }}> | {item.car_seats} seats</Text>
           </View>
         </View>
       </View>
