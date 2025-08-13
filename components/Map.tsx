@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { ActivityIndicator, Text, View, Platform } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
-
 import { icons } from "@/constants";
 import { useFetch } from "@/lib/fetch";
 import {
