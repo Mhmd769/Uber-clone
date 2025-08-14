@@ -13,12 +13,12 @@ const ConfirmRide = () => {
     <RideLayout title="Choose a Rider" snapPoints={["65%", "85%"]}>
       <FlatList
         data={drivers}
-        keyExtractor={(item, index) => index.toString()}
+        keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
           <DriverCard
             item={item}
-            selected={selectedDriver!}
-            setSelected={() => setSelectedDriver(item.id!)}
+            selected={selectedDriver ?? -1}
+            setSelected={setSelectedDriver}
           />
         )}
         ListFooterComponent={() => (

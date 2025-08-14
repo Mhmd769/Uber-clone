@@ -30,6 +30,11 @@ const Payment = ({
 
   const { userId } = useAuth();
   const [success, setSuccess] = useState<boolean>(false);
+  
+    const onPaymentSuccess = () => {
+    console.log("Payment successful!");
+    // Save to DB, navigate, etc.
+  };
 
   const openPaymentSheet = async () => {
     await initializePaymentSheet();
@@ -40,6 +45,8 @@ const Payment = ({
       Alert.alert(`Error code: ${error.code}`, error.message);
     } else {
       setSuccess(true);
+      onPaymentSuccess?.(); // ✅ trigger callback immediately on success
+
     }
   };
 
@@ -99,7 +106,7 @@ const Payment = ({
                   origin_longitude: userLongitude,
                   destination_latitude: destinationLatitude,
                   destination_longitude: destinationLongitude,
-                  ride_time: rideTime.toFixed(0),
+                  ride_time: (rideTime || 0).toFixed(0),
                   fare_price: parseInt(amount) * 100,
                   payment_status: "paid",
                   driver_id: driverId,

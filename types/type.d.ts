@@ -1,4 +1,4 @@
-import {TextInputProps, TouchableOpacityProps} from "react-native";
+import { TextInputProps, TouchableOpacityProps } from "react-native";
 
 declare interface Driver {
     driver_id: number;
@@ -16,6 +16,7 @@ declare interface MarkerData {
     latitude: number;
     longitude: number;
     id: number;
+    driver_id: number;
     title: string;
     profile_image_url: string;
     car_image_url: string;
@@ -97,6 +98,8 @@ declare interface PaymentProps {
     amount: string;
     driverId: number;
     rideTime: number;
+    onPaymentSuccess?: () => void; // ✅
+
 }
 
 declare interface LocationStore {

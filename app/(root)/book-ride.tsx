@@ -1,21 +1,32 @@
+import { useEffect } from "react";
 import { useUser } from "@clerk/clerk-expo";
 import { StripeProvider } from "@stripe/stripe-react-native";
+import { router } from "expo-router";
 import { Image, Text, View } from "react-native";
-
-//import Payment from "@/components/payment";
+import Payment from "@/components/payment";
 import RideLayout from "@/components/RideLayout";
 import { icons } from "@/constants";
 import { formatTime } from "@/lib/utils";
 import { useDriverStore, useLocationStore } from "@/store";
-import Payment from "@/components/payment";
 
 const BookRide = () => {
   const { user } = useUser();
   const { userAddress, destinationAddress } = useLocationStore();
   const { drivers, selectedDriver } = useDriverStore();
-  
-const driverDetails = drivers.find(driver => driver.id === selectedDriver);
 
+  const driverDetails = drivers.find(driver => driver.id === selectedDriver);
+
+  // ✅ Redirect inside useEffect, not render
+  useEffect(() => {
+    if (!selectedDriver || !driverDetails) {
+      router.replace("/(root)/confirm-ride");
+    }
+  }, [selectedDriver, driverDetails]);
+
+  // If no driver, render nothing while redirecting
+  if (!selectedDriver || !driverDetails) {
+    return null;
+  }
 
   return (
     <StripeProvider
@@ -23,7 +34,7 @@ const driverDetails = drivers.find(driver => driver.id === selectedDriver);
       merchantIdentifier="merchant.com.uber"
       urlScheme="myapp"
     >
-      <RideLayout title="Book Ride" snapPoints={['85%']}>
+      <RideLayout title="Book Ride"   snapPoints={["30%", "60%", "85%"]}>
         <>
           <Text className="text-xl font-JakartaSemiBold mb-3">
             Ride Information
@@ -37,7 +48,7 @@ const driverDetails = drivers.find(driver => driver.id === selectedDriver);
 
             <View className="flex flex-row items-center justify-center mt-5 space-x-2">
               <Text className="text-lg font-JakartaSemiBold">
-                {driverDetails?.title}
+                {driverDetails?.title || "Driver"}
               </Text>
 
               <View className="flex flex-row items-center space-x-0.5">
@@ -47,7 +58,7 @@ const driverDetails = drivers.find(driver => driver.id === selectedDriver);
                   resizeMode="contain"
                 />
                 <Text className="text-lg font-JakartaRegular">
-                  {driverDetails?.rating}
+                  {driverDetails?.rating || 5.0}
                 </Text>
               </View>
             </View>
@@ -57,21 +68,22 @@ const driverDetails = drivers.find(driver => driver.id === selectedDriver);
             <View className="flex flex-row items-center justify-between w-full border-b border-white py-3">
               <Text className="text-lg font-JakartaRegular">Ride Price</Text>
               <Text className="text-lg font-JakartaRegular text-[#0CC25F]">
-                ${driverDetails?.price}
+                ${driverDetails?.price || "0.00"}
               </Text>
             </View>
 
             <View className="flex flex-row items-center justify-between w-full border-b border-white py-3">
               <Text className="text-lg font-JakartaRegular">Pickup Time</Text>
               <Text className="text-lg font-JakartaRegular">
-                {formatTime(driverDetails?.time!)}
+                {Math.floor(driverDetails?.time || 0)} mins
               </Text>
+
             </View>
 
             <View className="flex flex-row items-center justify-between w-full py-3">
               <Text className="text-lg font-JakartaRegular">Car Seats</Text>
               <Text className="text-lg font-JakartaRegular">
-                {driverDetails?.car_seats}
+                {driverDetails?.car_seats || 4}
               </Text>
             </View>
           </View>
@@ -93,11 +105,14 @@ const driverDetails = drivers.find(driver => driver.id === selectedDriver);
           </View>
 
           <Payment
-            fullName={user?.fullName!}
-            email={user?.emailAddresses[0].emailAddress!}
-            amount={driverDetails?.price!}
-            driverId={driverDetails?.id ?? 0} // fallback to 0 if undefined
-            rideTime={driverDetails?.time!}
+            fullName={user?.fullName || "User"}
+            email={user?.emailAddresses[0]?.emailAddress || "user@example.com"}
+            amount={driverDetails?.price || "0.00"}
+            driverId={driverDetails?.id ?? 0}
+            rideTime={driverDetails?.time || 0}
+             onPaymentSuccess={() => {
+    router.replace("/(root)/(tabs)/home"); // redirect to home after payment
+  }}
           />
         </>
       </RideLayout>

@@ -12,21 +12,28 @@ export const generateMarkersFromData = ({
   userLatitude: number;
   userLongitude: number;
 }): MarkerData[] => {
-  return data.map((driver) => {
+  return data.map((driver, index) => {
     const latOffset = (Math.random() - 0.5) * 0.01;
     const lngOffset = (Math.random() - 0.5) * 0.01;
+
+    // Ensure we always have a valid numeric id
+    // Some datasets may use `id` instead of `driver_id`
+    const rawId = (driver as any).driver_id ?? (driver as any).id ?? index;
+    const safeId = Number.isFinite(Number(rawId)) ? Number(rawId) : index;
+
     return {
-      id: driver.driver_id,
+      id: safeId,
+      driver_id: safeId,
       latitude: userLatitude + latOffset,
       longitude: userLongitude + lngOffset,
       title: `${driver.first_name} ${driver.last_name}`,
       first_name: driver.first_name,
       last_name: driver.last_name,
-      rating: parseFloat(driver.rating) || 5,
+      rating: parseFloat((driver as any).rating) || 5,
       car_seats: driver.car_seats,
       profile_image_url: driver.profile_image_url,
       car_image_url: driver.car_image_url,
-    };
+    } as MarkerData;
   });
 };
 
