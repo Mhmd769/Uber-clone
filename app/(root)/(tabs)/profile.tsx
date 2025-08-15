@@ -1,64 +1,50 @@
 import { useUser } from "@clerk/clerk-expo";
-import { Image, ScrollView, Text, View } from "react-native";
+import { Image, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-import InputField from "@/components/InputField";
 
 const Profile = () => {
   const { user } = useUser();
 
+  const imageUri =
+    user?.externalAccounts?.[0]?.imageUrl || user?.imageUrl || "https://placehold.co/110x110";
+
   return (
-    <SafeAreaView className="flex-1">
-      <ScrollView
-        className="px-5"
-        contentContainerStyle={{ paddingBottom: 120 }}
-      >
-        <Text className="text-2xl font-JakartaBold my-5">My profile</Text>
+    <SafeAreaView className="flex-1 bg-gray-100">
+      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} className="px-5">
+        <Text className="text-2xl font-bold my-5">My Profile</Text>
 
         <View className="flex items-center justify-center my-5">
           <Image
-            source={{
-              uri: user?.externalAccounts[0]?.imageUrl ?? user?.imageUrl,
-            }}
-            style={{ width: 110, height: 110, borderRadius: 110 / 2 }}
-            className=" rounded-full h-[110px] w-[110px] border-[3px] border-white shadow-sm shadow-neutral-300"
+            source={{ uri: imageUri }}
+            className="w-[110px] h-[110px] rounded-full border-3 border-white shadow-sm"
           />
         </View>
 
-        <View className="flex flex-col items-start justify-center bg-white rounded-lg shadow-sm shadow-neutral-300 px-5 py-3">
-          <View className="flex flex-col items-start justify-start w-full">
-            <InputField
-              label="First name"
-              placeholder={user?.firstName || "Not Found"}
-              containerStyle="w-full"
-              inputStyle="p-3.5"
+        <View className="bg-white rounded-xl shadow-sm p-5">
+          <View className="mb-4">
+            <Text className="text-sm text-gray-500 mb-1">Username</Text>
+            <TextInput
+              value={user?.username || "Not Found"}
               editable={false}
+              className="w-full p-3.5 rounded bg-gray-200 text-md"
             />
+          </View>
 
-            <InputField
-              label="Last name"
-              placeholder={user?.lastName || "Not Found"}
-              containerStyle="w-full"
-              inputStyle="p-3.5"
+          <View className="mb-4">
+            <Text className="text-sm text-gray-500 mb-1">Email</Text>
+            <TextInput
+              value={user?.primaryEmailAddress?.emailAddress || "Not Found"}
               editable={false}
+              className="w-full p-3.5 rounded bg-gray-100 text-md"
             />
+          </View>
 
-            <InputField
-              label="Email"
-              placeholder={
-                user?.primaryEmailAddress?.emailAddress || "Not Found"
-              }
-              containerStyle="w-full"
-              inputStyle="p-3.5"
+          <View className="mb-4">
+            <Text className="text-sm text-gray-500 mb-1">Phone</Text>
+            <TextInput
+              value={user?.primaryPhoneNumber?.phoneNumber || "Not Found"}
               editable={false}
-            />
-
-            <InputField
-              label="Phone"
-              placeholder={user?.primaryPhoneNumber?.phoneNumber || "Not Found"}
-              containerStyle="w-full"
-              inputStyle="p-3.5"
-              editable={false}
+              className="w-full p-3.5 rounded bg-gray-100 text-md"
             />
           </View>
         </View>

@@ -3,15 +3,27 @@ import { useCallback, useEffect, useState } from "react";
 export const fetchAPI = async (url: string, options?: RequestInit) => {
   try {
     const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+
+    // read JSON once
+    let json: any = null;
+    try {
+      json = await response.json();
+    } catch (_) {
+      // ignore if no JSON
     }
-    return await response.json();
+
+    if (!response.ok) {
+      console.error("Server returned error:", json);
+      throw new Error(`HTTP error! status: ${response.status} - ${JSON.stringify(json)}`);
+    }
+
+    return json;
   } catch (error) {
     console.error("Fetch error:", error);
     throw error;
   }
 };
+
 
 export const useFetch = <T>(url: string, options?: RequestInit) => {
   const [data, setData] = useState<T | null>(null);
