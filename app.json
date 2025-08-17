@@ -15,12 +15,18 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/favicon.png",
         "backgroundColor": "#ffffff",
-        "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+        "permissions": [
+          "ACCESS_FINE_LOCATION",
+          "ACCESS_COARSE_LOCATION",
+          "ACCESS_FINE_LOCATION",
+          "ACCESS_COARSE_LOCATION"
+        ],
         "googleMaps": {
           "apiKey": "AIzaSyBAPdaX1Ix52kX0HlSaqULKcREFUqYdYDo"
         }
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.uber"
     },
     "web": {
       "bundler": "metro",
@@ -33,10 +39,14 @@
       "backgroundColor": "#ffffff"
     },
     "plugins": [
-    ["expo-router",{"origin":"https://uber.com"}],   
+      [
+        "expo-router",
+        {
+          "origin": "https://uber.com"
+        }
+      ],
       "expo-splash-screen",
       "expo-web-browser"
-
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,36 +1,21 @@
-import React, { useEffect, useState, useRef } from "react";
-import { ActivityIndicator, Text, View, Platform } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
-import { icons } from "@/constants";
+import React, { useEffect, useState } from "react";
+import { View, Text, ActivityIndicator } from "react-native";
+import MapView, { Marker, Polyline, PROVIDER_DEFAULT, UrlTile } from "react-native-maps";
 import { useFetch } from "@/lib/fetch";
-import {
-  calculateDriverTimes,
-  calculateRegion,
-  generateMarkersFromData,
-} from "@/lib/map";
 import { useDriverStore, useLocationStore } from "@/store";
 import { Driver, MarkerData } from "@/types/type";
+import { generateMarkersFromData, calculateDriverTimes } from "@/lib/map";
+import { icons } from "@/constants";
 
-const LEBANON_CENTER = {
-  latitude: 33.8547,
-  longitude: 35.8623,
-  latitudeDelta: 0.5,
-  longitudeDelta: 0.5,
-};
+const LEBANON_CENTER = { latitude: 33.8547, longitude: 35.8623, latitudeDelta: 0.1, longitudeDelta: 0.1 };
 
 const Map = () => {
-  const {
-    userLongitude,
-    userLatitude,
-    destinationLongitude,
-    destinationLatitude,
-  } = useLocationStore();
+  const { userLatitude, userLongitude, destinationLatitude, destinationLongitude } = useLocationStore();
   const { selectedDriver, setSelectedDriver, setDrivers } = useDriverStore();
 
   const { data: drivers, loading, error } = useFetch<Driver[]>("/(api)/driver");
   const [markers, setMarkers] = useState<MarkerData[]>([]);
   const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
-  const mapRef = useRef<MapView>(null);
 
   // Generate driver markers
   useEffect(() => {
@@ -42,19 +27,12 @@ const Map = () => {
       userLongitude,
     });
     setMarkers(newMarkers);
-    setDrivers(newMarkers); // update store
+    setDrivers(newMarkers);
   }, [drivers, userLatitude, userLongitude, setDrivers]);
 
   // Calculate driver times & prices
   useEffect(() => {
-    if (
-      !userLatitude ||
-      !userLongitude ||
-      !destinationLatitude ||
-      !destinationLongitude ||
-      markers.length === 0
-    )
-      return;
+    if (!userLatitude || !userLongitude || !destinationLatitude || !destinationLongitude || markers.length === 0) return;
 
     calculateDriverTimes({
       markers,
@@ -63,20 +41,12 @@ const Map = () => {
       destinationLatitude,
       destinationLongitude,
     }).then((updatedMarkers) => setDrivers(updatedMarkers as MarkerData[]));
-  }, [
-    markers,
-    userLatitude,
-    userLongitude,
-    destinationLatitude,
-    destinationLongitude,
-    setDrivers,
-  ]);
+  }, [markers, userLatitude, userLongitude, destinationLatitude, destinationLongitude, setDrivers]);
 
   // Fetch route from OSRM
   useEffect(() => {
     const fetchRoute = async () => {
-      if (!userLatitude || !userLongitude || !destinationLatitude || !destinationLongitude)
-        return;
+      if (!userLatitude || !userLongitude || !destinationLatitude || !destinationLongitude) return;
 
       try {
         const url = `https://router.project-osrm.org/route/v1/driving/${userLongitude},${userLatitude};${destinationLongitude},${destinationLatitude}?overview=full&geometries=geojson`;
@@ -84,9 +54,10 @@ const Map = () => {
         const data = await response.json();
 
         if (data.routes && data.routes.length > 0) {
-          const coords = data.routes[0].geometry.coordinates.map(
-            ([lon, lat]: [number, number]) => ({ latitude: lat, longitude: lon })
-          );
+          const coords = data.routes[0].geometry.coordinates.map((c: number[]) => ({
+            latitude: c[1],
+            longitude: c[0],
+          }));
           setRouteCoords(coords);
         }
       } catch (err) {
@@ -97,64 +68,75 @@ const Map = () => {
     fetchRoute();
   }, [userLatitude, userLongitude, destinationLatitude, destinationLongitude]);
 
-  const region = calculateRegion({
-    userLatitude: userLatitude ?? LEBANON_CENTER.latitude,
-    userLongitude: userLongitude ?? LEBANON_CENTER.longitude,
-    destinationLatitude: destinationLatitude ?? LEBANON_CENTER.latitude,
-    destinationLongitude: destinationLongitude ?? LEBANON_CENTER.longitude,
-  });
-
   if (loading || !userLatitude || !userLongitude)
     return (
-      <View className="flex justify-center items-center w-full">
-        <ActivityIndicator size="small" color="#000" />
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" color="#000" />
       </View>
     );
 
   if (error)
     return (
-      <View className="flex justify-center items-center w-full">
+      <View className="flex-1 justify-center items-center">
         <Text>Error: {error}</Text>
       </View>
     );
 
   return (
-    <MapView
-      ref={mapRef}
-      provider={PROVIDER_GOOGLE}
-      style={{ flex: 1 }}
-      mapType={Platform.OS === "ios" ? "mutedStandard" : "standard"}
-      showsUserLocation
-      showsPointsOfInterest={false}
-      initialRegion={region}
-      userInterfaceStyle="light"
-    >
-      {/* Driver markers */}
-      {markers.map((marker) => (
-        <Marker
-          key={marker.id}
-          coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-          title={marker.title}
-          image={selectedDriver === marker.id ? icons.selectedMarker : icons.marker}
-          onPress={() => setSelectedDriver(marker.id)}
-        />
-      ))}
+<MapView
+  style={{ flex: 1 }}
+  provider={PROVIDER_DEFAULT}
+  initialRegion={{
+    latitude: userLatitude ?? LEBANON_CENTER.latitude,
+    longitude: userLongitude ?? LEBANON_CENTER.longitude,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  }}
+>
+  {/* Free Carto Light tiles (OSM-based) */}
+  <UrlTile
+    urlTemplate="https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png"
+    maximumZ={19}
+    flipY={false}
+  />
 
-      {/* Destination marker */}
-      {destinationLatitude && destinationLongitude && (
-        <Marker
-          key="destination"
-          coordinate={{ latitude: destinationLatitude, longitude: destinationLongitude }}
-          title="Destination"
-          image={icons.pin}
-        />
-      )}
+  {/* User location marker (red) */}
+  {userLatitude && userLongitude && (
+    <Marker
+      coordinate={{ latitude: userLatitude, longitude: userLongitude }}
+      pinColor="red" // <-- red pin for user's location
+    />
+  )}
 
-      {/* Draw route from OSRM */}
-      {routeCoords.length > 0 && (
-        <Polyline coordinates={routeCoords} strokeWidth={4} strokeColor="#0286FF" />
-      )}
-    </MapView>
+  {/* Driver markers */}
+  {markers.map((marker) => (
+    <Marker
+      key={marker.id.toString()}
+      coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
+      onPress={() => setSelectedDriver(marker.id)}
+      image={selectedDriver === marker.id ? icons.selectedMarker : icons.marker} // <-- car icon
+    />
+  ))}
+
+  {/* Destination marker */}
+  {destinationLatitude && destinationLongitude && (
+    <Marker
+      key="destination"
+      coordinate={{ latitude: destinationLatitude, longitude: destinationLongitude }}
+      pinColor="green"
+    />
+  )}
+
+  {/* Route polyline */}
+  {routeCoords.length > 0 && (
+    <Polyline
+      coordinates={routeCoords}
+      strokeColor="#0286FF"
+      strokeWidth={4}
+    />
+  )}
+</MapView>
+
   );
 };
 
