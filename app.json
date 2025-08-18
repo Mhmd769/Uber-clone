@@ -50,6 +50,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://uber.com"
+      },
+      "eas": {
+        "projectId": "14fcd37e-f4d8-4b8c-9c8d-8244b0e5c95d"
+      }
     }
   }
 }

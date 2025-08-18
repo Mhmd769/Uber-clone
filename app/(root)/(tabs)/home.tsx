@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import LocationSearch from "@/components/LocationSearch";
 import Map from "@/components/Map";
 import RideCard from "@/components/RideCard";
-import { icons, images } from "@/constants";
+import { images } from "@/constants";
 import { useFetch } from "@/lib/fetch";
 import { useLocationStore } from "@/store";
 import { Ride } from "@/types/type";
@@ -30,28 +30,27 @@ const Home = () => {
 
   // Fetch recent rides dynamically from backend
   const { data: recentRides, loading, error } = useFetch<Ride[]>(
-    user?.id ? `/(api)/ride/${user.id}` : 'null'
+    user?.id ? `/(api)/ride/${user.id}` : ""
   );
-
 
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         setHasPermission(false);
         return;
       }
       setHasPermission(true);
 
-      let location = await Location.getCurrentPositionAsync({});
+      const location = await Location.getCurrentPositionAsync({});
       const address = await Location.reverseGeocodeAsync({
         latitude: location.coords?.latitude!,
         longitude: location.coords?.longitude!,
       });
 
       setUserLocation({
-        latitude: location.coords?.latitude,
-        longitude: location.coords?.longitude,
+        latitude: location.coords?.latitude!,
+        longitude: location.coords?.longitude!,
         address: `${address[0].name}, ${address[0].region}`,
       });
     })();
@@ -77,7 +76,10 @@ const Home = () => {
       <FlatList
         data={recentRides?.slice(0, 5)}
         renderItem={({ item }) => <RideCard ride={item} />}
-        keyExtractor={(item, index) => item.ride_id.toString() || index.toString()}
+        keyExtractor={(item, index) =>
+          // Use a fallback string if id is undefined
+          (item.driver_id?.toString() ?? index.toString())
+        }
         className="px-5"
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
@@ -104,7 +106,7 @@ const Home = () => {
           <>
             <View className="flex flex-row items-center justify-between my-5">
               <Text className="text-2xl font-JakartaExtraBold">
-                Welcome {user?.firstName}👋
+                Welcome {user?.firstName ?? "User"} 👋
               </Text>
               <SignOutButton />
             </View>
